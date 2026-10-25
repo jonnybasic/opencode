@@ -8,7 +8,7 @@ import { HttpTimeout, type ProviderPackageDefinition } from "@opencode/ai"
 import { isRecord } from "@opencode/ai/utils/record"
 import { Npm } from "@opencode/util/npm"
 import type { DeepMutable } from "./schema.js"
-import { importModule, resolveModule } from "@opencode/util/runtime-import"
+import { importModule } from "@opencode/util/runtime-import"
 import { Bus } from "./bus.js"
 import { Integration } from "./integration.js"
 import { State } from "./state.js"
@@ -121,6 +121,10 @@ const builtins = new Map<string, () => Promise<unknown>>([
     "@opencode/ai/providers/zai-coding-plan/responses",
     () => import("@opencode/ai/providers/zai-coding-plan/responses"),
   ],
+  ["@ai-sdk/openai", () => import("@ai-sdk/openai")],
+  ["@ai-sdk/openai-compatible", () => import("@ai-sdk/openai-compatible")],
+  ["@ai-sdk/google", () => import("@ai-sdk/google")],
+  ["@ai-sdk/google-vertex", () => import("@ai-sdk/google-vertex")],
 ])
 
 export const loadPackage = Effect.fn("Provider.loadPackage")(function* (input: string, npm?: Npm.Interface) {
@@ -136,20 +140,10 @@ export const loadPackage = Effect.fn("Provider.loadPackage")(function* (input: s
     }
   })
   if (resolved) return yield* importPackage(specifier, resolved)
-  if (!npm) {
-    return yield* new LoadError({
-      package: specifier,
-      cause: new Error(`Provider package ${specifier} is not installed`),
-    })
-  }
-  const parts = specifier.split("/")
-  const root = specifier.startsWith("@") ? parts.slice(0, 2).join("/") : (parts[0] ?? specifier)
-  const installed = yield* npm.add(root).pipe(Effect.mapError((cause) => new LoadError({ package: specifier, cause })))
-  const entrypoint = yield* Effect.try({
-    try: () => resolveModule(specifier, installed.directory),
-    catch: (cause) => new LoadError({ package: specifier, cause }),
+  return yield* new LoadError({
+    package: specifier,
+    cause: new Error(`Runtime package installation is disabled in the Enterprise Air-Gapped build: ${specifier}`),
   })
-  return yield* importPackage(specifier, entrypoint)
 })
 
 /** opencode settings consumed in Core; native packages never receive them. */
