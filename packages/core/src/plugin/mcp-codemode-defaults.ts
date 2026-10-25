@@ -12,8 +12,8 @@ const urls = [/^https:\/\/executor\.sh\/[^/]+\/mcp$/]
 // PostHog wraps all of its tools in one server-side Code Mode tool unless the client asks for "tools" mode, so OpenCode
 // Code Mode stays on and PostHog's is turned off. PostHog also reads `?mode=`, but the header wins over it and leaves
 // the URL, which stored credentials are keyed by, unchanged.
-const posthog = /^mcp(?:-eu|\.us|\.eu)?\.posthog\.com$/
-const mode = "x-posthog-mcp-mode"
+const posthog = /^$/
+const mode = "x-disabled-mcp-mode"
 
 export const Plugin = define({
   id: "opencode.mcp.codemode.defaults",

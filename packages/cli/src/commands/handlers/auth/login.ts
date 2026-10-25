@@ -18,12 +18,11 @@ import {
 } from "./shared"
 
 const integrationPriority = new Map([
-  ["opencode-go", 0],
-  ["opencode", 1],
-  ["openai", 2],
-  ["github-copilot", 3],
-  ["anthropic", 4],
-  ["google", 5],
+  ["cui-gpt", 0],
+  ["gemini", 1],
+  ["il5-gemini", 1],
+  ["enterprise-vllm", 2],
+  ["local-llama", 3],
 ])
 
 export default Runtime.handler(
@@ -60,17 +59,7 @@ const login = Effect.fn("cli.auth.login.run")(function* (input: {
 })
 
 const findIntegration = Effect.fn("cli.auth.login.integration")(function* (client: OpenCodeClient, target?: string) {
-  if (target && URL.canParse(target)) {
-    const protocol = new URL(target).protocol
-    if (protocol === "http:" || protocol === "https:") {
-      const progress = spinner()
-      progress.start("Discovering authentication provider...")
-      yield* request((signal) => client.integration.wellknown.add({ url: target, location }, { signal })).pipe(
-        Effect.tap(() => Effect.sync(() => progress.stop("Authentication provider discovered"))),
-        Effect.tapCause(() => Effect.sync(() => progress.stop("Discovery failed", 1))),
-      )
-    }
-  }
+  // Remote wellknown discovery disabled in enterprise air-gapped build
   const integrations = yield* loadIntegrations(client)
   if (target) return yield* resolveIntegration(integrations, target)
   const choices = loginChoices(integrations)

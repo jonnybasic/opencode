@@ -47,7 +47,7 @@ export type ConnectMethod = Exclude<IntegrationMethod, { type: "env" }>
 
 export function connectMethods(integration: IntegrationInfo) {
   return integration.methods
-    .filter((method): method is ConnectMethod => method.type !== "env")
+    .filter((method): method is ConnectMethod => method.type === "key")
     .toSorted((a, b) => Number(a.type === "key") - Number(b.type === "key"))
 }
 

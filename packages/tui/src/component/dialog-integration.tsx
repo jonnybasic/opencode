@@ -38,12 +38,11 @@ import {
 } from "../util/form"
 
 const INTEGRATION_PRIORITY: Record<string, number> = {
-  "opencode-go": 0,
-  opencode: 1,
-  openai: 2,
-  "github-copilot": 3,
-  anthropic: 4,
-  google: 5,
+  "cui-gpt": 0,
+  gemini: 1,
+  "il5-gemini": 1,
+  "enterprise-vllm": 2,
+  "local-llama": 3,
 }
 
 type ConnectMethod = Exclude<IntegrationInfo["methods"][number], { type: "env" }>
@@ -67,7 +66,7 @@ export function integrationOptions(list: IntegrationInfo[]) {
 
 export function connectMethods(integration: IntegrationInfo): ConnectMethod[] {
   return integration.methods
-    .filter((method): method is ConnectMethod => method.type !== "env")
+    .filter((method): method is ConnectMethod => method.type === "key")
     .toSorted((a, b) => Number(a.type === "key") - Number(b.type === "key"))
 }
 

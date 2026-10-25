@@ -5,7 +5,7 @@ import { Effect, Schema, Scope } from "effect"
 import { HttpClient } from "effect/http"
 import { WebSearchMcp } from "./mcp.js"
 
-export const endpoint = "https://mcp.exa.ai/mcp"
+export const endpoint = ""
 
 const McpInput = Schema.Struct({
   query: Schema.String,
@@ -45,7 +45,8 @@ export const Plugin = define<HttpClient.HttpClient | Scope.Scope>({
           Effect.gen(function* () {
             const connection = yield* ctx.integration.connection.active("exa")
             const credential = connection ? yield* ctx.integration.connection.resolve(connection) : undefined
-            const url = new URL(endpoint)
+            const url = endpoint ? new URL(endpoint) : undefined
+            if (!url) return []
             if (credential?.type === "key") url.searchParams.set("exaApiKey", credential.key)
             const result = yield* WebSearchMcp.call(
               http,
