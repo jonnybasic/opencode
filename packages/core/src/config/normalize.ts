@@ -166,7 +166,13 @@ export function normalize(input: unknown): Result {
   )
 
   const legacyProviders = migrateProviders(input.provider, diagnostics)
-  const nativeProviders = decodeMap(input.providers, ConfigProvider.Info, ["providers"], diagnostics, decodeEncoded)
+  const nativeProviders = decodeMap(
+    normalizeNativeProviders(input.providers),
+    ConfigProvider.Info,
+    ["providers"],
+    diagnostics,
+    decodeEncoded,
+  )
   mergeMap(
     encoded,
     "providers",
@@ -571,6 +577,42 @@ function migratePermissions(value: unknown, diagnostics: Diagnostic[]) {
         : [{ action: ConfigMigrateV1.normalizeAction(action), resource, effect: decoded }]
     })
   })
+}
+
+
+function normalizeNativeProviders(value: unknown): unknown {
+  if (!isRecord(value)) return value
+  const result: Record<string, unknown> = {}
+  for (const [providerID, provider] of Object.entries(value)) {
+    if (!isRecord(provider) || !isRecord(provider.models)) {
+      result[providerID] = provider
+      continue
+    }
+    const models: Record<string, unknown> = {}
+    for (const [modelID, model] of Object.entries(provider.models)) {
+      if (!isRecord(model)) {
+        models[modelID] = model
+        continue
+      }
+      const modelCopy = { ...model }
+      if (isRecord(modelCopy.capabilities)) {
+        const cap = { ...modelCopy.capabilities }
+        if (cap.tool_call !== undefined && cap.tools === undefined) {
+          cap.tools = cap.tool_call
+          delete cap.tool_call
+        }
+        if (cap.reasoning === true) {
+          cap.reasoning = { supported: true }
+        } else if (cap.reasoning === false) {
+          cap.reasoning = { supported: false }
+        }
+        modelCopy.capabilities = cap
+      }
+      models[modelID] = modelCopy
+    }
+    result[providerID] = { ...provider, models }
+  }
+  return result
 }
 
 function migrateProviders(value: unknown, diagnostics: Diagnostic[]) {
