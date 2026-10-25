@@ -1,0 +1,85 @@
+name: release-airgap
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v2.1.0-airgap.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: cli-linux-x64
+          - os: windows-latest
+            artifact: cli-windows-x64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2-air-gap
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI (single target)
+        run: bun run script/build.ts --single --skip-web-ui
+        working-directory: packages/cli
+
+      - name: Package artifact (linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd packages/cli/dist/cli-linux-x64
+          tar -czf ../../../../cli-linux-x64.tar.gz .
+      - name: Package artifact (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path packages/cli/dist/cli-windows-x64/* -DestinationPath cli-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            cli-linux-x64.tar.gz
+            cli-windows-x64.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Create tag if missing
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}.git
+          git fetch --tags origin
+          if git rev-parse "${{ inputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag exists"
+          else
+            echo "Tag does not exist yet; create it from v2-air-gap before running release."
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          generate_release_notes: true
+          files: release-assets/**/*
