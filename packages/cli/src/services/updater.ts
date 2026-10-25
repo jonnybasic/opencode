@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from "effect"
 import type { Policy } from "./updater-action"
 
-export const methods = ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew"] as const
+export const methods = ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew", "winget"] as const
 
 export type Method = (typeof methods)[number]
 export type RunResult = { readonly type: "available" | "installed"; readonly version: string }
