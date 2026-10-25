@@ -75,7 +75,6 @@
     }
   },
   "devDependencies": {
-    "@ai-sdk/openai-compatible": "2.0.41",
     "@effect/platform-node": "catalog:",
     "@effect/sql-sqlite-bun": "catalog:",
     "@modelcontextprotocol/server": "2.0.0",
@@ -134,6 +133,10 @@
     "tree-sitter-powershell": "0.25.10",
     "web-tree-sitter": "0.25.10",
     "which": "6.0.1",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@ai-sdk/google": "3.0.73",
+    "@ai-sdk/google-vertex": "4.0.128",
+    "@ai-sdk/openai": "3.0.84",
+    "@ai-sdk/openai-compatible": "2.0.41"
   }
 }
