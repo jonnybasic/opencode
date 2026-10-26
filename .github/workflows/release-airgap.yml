@@ -4,8 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v2.1.0-airgap.1)"
+        description: "Release tag (e.g. v2.1.0-air-gap.X)"
         required: true
+        type: string
+      version:
+        description: "CLI version override (optional). Defaults to tag without leading v."
+        required: false
+        type: string
+      enterprise_models_b64:
+        description: "Base64-encoded catalog JSON to embed for this build only (optional)."
+        required: false
         type: string
 
 permissions:
@@ -24,13 +32,57 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: v2-air-gap
+
+      - name: Derive OPENCODE_VERSION from tag when version input is unset
+        if: inputs.version == ''
+        shell: bash
+        run: |
+          tag='${{ inputs.tag }}'
+          if [[ "$tag" == v* ]]; then
+            version="${tag#v}"
+          else
+            version="$tag"
+          fi
+          if [[ -z "$version" ]]; then
+            echo "Derived version is empty"
+            exit 1
+          fi
+          echo "OPENCODE_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Use explicit version input
+        if: inputs.version != ''
+        shell: bash
+        run: |
+          version='${{ inputs.version }}'
+          if [[ -z "$version" ]]; then
+            echo "Version input is empty"
+            exit 1
+          fi
+          echo "OPENCODE_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Validate effective version
+        shell: bash
+        run: |
+          if [[ -z "${OPENCODE_VERSION:-}" ]]; then
+            echo "OPENCODE_VERSION is not set"
+            exit 1
+          fi
+          echo "Building CLI with OPENCODE_VERSION=$OPENCODE_VERSION"
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
+
+      - name: Inject enterprise models snapshot (optional)
+        if: inputs.enterprise_models_b64 != ''
+        shell: bash
+        env:
+          ENTERPRISE_MODELS_B64: ${{ inputs.enterprise_models_b64 }}
+        run: |
+          bun -e 'const input = process.env.ENTERPRISE_MODELS_B64; if (!input) throw new Error("enterprise_models_b64 input is empty"); const decoded = Buffer.from(input, "base64").toString("utf8"); const parsed = JSON.parse(decoded); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("enterprise_models_b64 must decode to a JSON object"); await Bun.write("packages/core/src/models-dev/snapshot.txt", decoded); console.log(`Embedded enterprise catalog with ${Object.keys(parsed).length} providers`)'
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -50,7 +102,7 @@ jobs:
         run: |
           Compress-Archive -Path packages/cli/dist/cli-windows-x64/* -DestinationPath cli-windows-x64.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact }}
           path: |
@@ -61,7 +113,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: release-assets
 
